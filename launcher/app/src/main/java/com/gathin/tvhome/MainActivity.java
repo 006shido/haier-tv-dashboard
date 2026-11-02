@@ -2345,7 +2345,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if ((position<COLUMNS && keyCode==KeyEvent.KEYCODE_DPAD_DOWN)
                 || (position>=COLUMNS && position<COLUMNS*2 && keyCode==KeyEvent.KEYCODE_DPAD_UP)) {
-            ((WebsiteRow)findViewById(R.id.websiteRow)).focusFirst();
+            ((WebsiteRow)findViewById(R.id.websiteRow)).focusColumn(position%COLUMNS);
             return true;
         }
         int count = adapter.appCount();
@@ -2355,7 +2355,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // stopping at its two ends (the default focus search scrolls the row to the next tile).
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return false;
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                ((WebsiteRow) findViewById(R.id.websiteRow)).focusFirst();
+                ((WebsiteRow) findViewById(R.id.websiteRow)).focusColumn(position%COLUMNS);
                 return true;
             }
             boolean forward = rtlAppGrid ? keyCode == KeyEvent.KEYCODE_DPAD_LEFT : keyCode == KeyEvent.KEYCODE_DPAD_RIGHT;

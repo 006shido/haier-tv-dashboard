@@ -120,6 +120,7 @@ public final class LauncherSettingsActivity extends Activity {
             changed();
             refresh();
         });
+        findViewById(R.id.setDefaultHomeChoice).setOnClickListener(v -> open(new Intent(this,HomeSettingsActivity.class)));
         findViewById(R.id.tvSettingsChoice).setOnClickListener(v ->
                 open(SystemSettings.intent(this, Settings.ACTION_SETTINGS)));
         refresh();

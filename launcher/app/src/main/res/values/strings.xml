@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="dashboard_accessibility_description">Redirects the Home button on supported TVs. After you open the power menu, it briefly reads the system power dialog to focus a button for remote navigation. It does not select Power off or Restart for you.</string>
+    <string name="home_setup_title">Welcome to Home</string>
+    <string name="home_setup_description">Choose Home as your default launcher to open it with the remote’s Home button, or try it first.</string>
+    <string name="set_default_home">Set as default Home</string>
+    <string name="try_home">Try Home first</string>
+    <string name="home_setup_hint">Android controls the default launcher. Some TV firmware keeps its original Home screen. You can reopen this chooser from Launcher settings.</string>
     <string name="choose_wallpaper_picture">Choose picture from TV or USB</string>
     <string name="saved_wallpaper_picture">My saved picture</string>
     <string name="saving_wallpaper">Saving wallpaper...</string>

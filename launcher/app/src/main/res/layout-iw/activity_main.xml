@@ -170,7 +170,7 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <ScrollView
+    <com.gathin.tvhome.DashboardScrollView
         android:id="@+id/dashboardScroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -500,7 +500,7 @@
                 android:fontFamily="@string/font_medium" />
         </FrameLayout>
         </LinearLayout>
-    </ScrollView>
+    </com.gathin.tvhome.DashboardScrollView>
 
     <!-- The single floating glass highlight that springs between tiles. -->
     <com.gathin.tvhome.GlassView

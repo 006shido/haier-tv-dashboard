@@ -42,7 +42,11 @@ public final class WebsiteRow extends LinearLayout {
         states.addState(new int[]{android.R.attr.state_focused},background(true,color));
         states.addState(new int[]{},background(false,color));return states;
     }
-    void focusFirst(){if(links.getChildCount()>0)links.getChildAt(0).requestFocus();}
+    void focusColumn(int column){
+        if(links.getChildCount()==0)return;
+        int index=Math.min(links.getChildCount()-1,firstVisible+Math.max(0,Math.min(columns-1,column)));
+        links.getChildAt(index).requestFocus();
+    }
     @Override protected void onMeasure(int widthSpec,int heightSpec){
         int w=View.MeasureSpec.getSize(widthSpec);
         for(int i=0;i<links.getChildCount();i++){

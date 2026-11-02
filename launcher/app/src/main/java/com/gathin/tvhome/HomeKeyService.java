@@ -21,6 +21,7 @@ import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.ViewConfiguration;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Toast;
 
 import java.util.Collections;
@@ -137,6 +138,9 @@ public class HomeKeyService extends AccessibilityService {
 
     @Override
     public void onDestroy() {
+        handler.removeCallbacks(powerMenuRequest);
+        handler.removeCallbacks(focusPowerOption);
+        powerFocusUntil=0;
         if (running == this) running = null;
         RemoteKeys.release(this);
         stopWaitingForUnlock();
@@ -364,7 +368,50 @@ public class HomeKeyService extends AccessibilityService {
     /** The system power menu (Restart, and Power off where the firmware has it); the TV asks before it acts. */
     static void openPowerMenu() {
         HomeKeyService service = running;
-        if (service != null) service.performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
+        if(service==null)return;
+        // The launcher popup must release its input window before SystemUI acquires remote focus.
+        service.handler.removeCallbacks(service.powerMenuRequest);
+        service.handler.postDelayed(service.powerMenuRequest,250);
+    }
+
+    private final Runnable powerMenuRequest=()->{
+        if(running!=this)return;
+        if(!performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)){
+            Toast.makeText(this,R.string.not_available,Toast.LENGTH_SHORT).show();return;
+        }
+        powerFocusUntil=SystemClock.elapsedRealtime()+2000;
+        this.handler.removeCallbacks(this.focusPowerOption);
+        this.handler.postDelayed(this.focusPowerOption,100);
+    };
+
+    private long powerFocusUntil;
+    private final Runnable focusPowerOption=new Runnable(){
+        @Override public void run(){
+            if(running!=HomeKeyService.this||SystemClock.elapsedRealtime()>=powerFocusUntil)return;
+            AccessibilityNodeInfo root=getRootInActiveWindow();
+            boolean focused=false;
+            try{
+                if(root!=null&&"com.android.systemui".contentEquals(root.getPackageName()==null?"":root.getPackageName())){
+                    java.util.List<AccessibilityNodeInfo> menus=root.findAccessibilityNodeInfosByViewId("com.android.systemui:id/global_actions_view");
+                    for(AccessibilityNodeInfo menu:menus){
+                        try{if(!focused)focused=focusPowerChild(menu,false);}finally{menu.recycle();}
+                    }
+                }
+            }finally{if(root!=null)root.recycle();}
+            if(focused)powerFocusUntil=0;
+            else handler.postDelayed(this,100);
+        }
+    };
+
+    /** Input focus only: never performs a click or reads the labels/content of other windows. */
+    private static boolean focusPowerChild(AccessibilityNodeInfo node,boolean child){
+        if(child&&node.isEnabled()&&node.isFocusable()&&node.isClickable()
+                &&node.performAction(AccessibilityNodeInfo.ACTION_FOCUS))return true;
+        for(int i=0;i<node.getChildCount();i++){
+            AccessibilityNodeInfo next=node.getChild(i);if(next==null)continue;
+            try{if(focusPowerChild(next,true))return true;}finally{next.recycle();}
+        }
+        return false;
     }
 
     static boolean powerOnRedirect(String liveTv, CharSequence pkg, long now, long armedUntil) {
