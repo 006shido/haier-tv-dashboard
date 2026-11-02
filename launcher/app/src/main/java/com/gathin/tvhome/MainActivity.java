@@ -3656,7 +3656,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (dockRow) addSettingsMenuRow(rows, popup, R.string.dock_edit, this::startDockEdit);
         // A launcher may not restart the TV itself; the Home key helper can open the system power menu instead.
-        if (HomeKeyService.canOpenPowerMenu()) addSettingsMenuRow(rows, popup, R.string.power_menu, HomeKeyService::openPowerMenu);
+        if (HomeKeyService.canOpenPowerMenu()) addSettingsMenuRow(rows, popup, R.string.power_menu, () -> {
+            android.view.View decor=getWindow().getDecorView();
+            android.graphics.Bitmap backdrop=android.graphics.Bitmap.createBitmap(decor.getWidth(),decor.getHeight(),android.graphics.Bitmap.Config.ARGB_8888);
+            android.view.PixelCopy.request(getWindow(),backdrop,result -> {
+                if(result==android.view.PixelCopy.SUCCESS)HomeKeyService.openPowerMenu(backdrop);
+                else{backdrop.recycle();android.widget.Toast.makeText(this,R.string.not_available,android.widget.Toast.LENGTH_SHORT).show();}
+            },new android.os.Handler(android.os.Looper.getMainLooper()));
+        });
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         popup.setWidth(Math.max((int) (200 * density), panel.getMeasuredWidth()));
         // Hebrew puts Settings at the left of the header: grow the menu inward from it.

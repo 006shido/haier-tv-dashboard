@@ -259,6 +259,10 @@ public class HomeKeyService extends AccessibilityService {
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
+        // Release the stationary corner mask before SystemUI starts its dismissal animation.
+        // Pass Back through unchanged so the native dialog owns cancellation and its transition.
+        if(powerTracking&&event.getKeyCode()==KeyEvent.KEYCODE_BACK
+                &&event.getAction()==KeyEvent.ACTION_DOWN)clearPowerFocus();
         // power_on_home: the first key after power-on hands the TV to the user (power and wake keys don't count).
         if (powerOnUntil != 0 && event.getAction() == KeyEvent.ACTION_DOWN
                 && event.getKeyCode() != KeyEvent.KEYCODE_POWER && event.getKeyCode() != KeyEvent.KEYCODE_WAKEUP) {
@@ -372,9 +376,11 @@ public class HomeKeyService extends AccessibilityService {
     }
 
     /** The system power menu (Restart, and Power off where the firmware has it); the TV asks before it acts. */
-    static void openPowerMenu() {
+    static void openPowerMenu(android.graphics.Bitmap backdrop) {
         HomeKeyService service = running;
-        if(service==null)return;
+        if(service==null){backdrop.recycle();return;}
+        service.clearPowerFocus();
+        service.powerBackdrop=backdrop;
         // The launcher popup must release its input window before SystemUI acquires remote focus.
         service.handler.removeCallbacks(service.powerMenuRequest);
         service.handler.postDelayed(service.powerMenuRequest,250);
@@ -383,6 +389,7 @@ public class HomeKeyService extends AccessibilityService {
     private final Runnable powerMenuRequest=()->{
         if(running!=this)return;
         if(!performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)){
+            clearPowerFocus();
             Toast.makeText(this,R.string.not_available,Toast.LENGTH_SHORT).show();return;
         }
         powerFocusUntil=SystemClock.elapsedRealtime()+2000;
@@ -393,7 +400,7 @@ public class HomeKeyService extends AccessibilityService {
     private long powerFocusUntil;
     private final Runnable focusPowerOption=new Runnable(){
         @Override public void run(){
-            if(running!=HomeKeyService.this||SystemClock.elapsedRealtime()>=powerFocusUntil)return;
+            if(running!=HomeKeyService.this||SystemClock.elapsedRealtime()>=powerFocusUntil){clearPowerFocus();return;}
             AccessibilityNodeInfo root=getRootInActiveWindow();
             boolean focused=false;
             try{
@@ -407,7 +414,11 @@ public class HomeKeyService extends AccessibilityService {
             if(focused){
                 powerFocusUntil=0;powerTracking=true;
                 AccessibilityServiceInfo info=getServiceInfo();
-                if(info!=null){info.eventTypes|=AccessibilityEvent.TYPE_VIEW_FOCUSED;setServiceInfo(info);}
+                if(info!=null){
+                    powerHadKeyFilter=(info.flags&AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS)!=0;
+                    info.flags|=AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+                    info.eventTypes|=AccessibilityEvent.TYPE_VIEW_FOCUSED;setServiceInfo(info);
+                }
                 handler.postDelayed(updatePowerOutline,60);
             }
             else handler.postDelayed(this,100);
@@ -415,7 +426,9 @@ public class HomeKeyService extends AccessibilityService {
     };
 
     private boolean powerTracking;
+    private boolean powerHadKeyFilter;
     private PowerFocusOutline powerOutline;
+    private android.graphics.Bitmap powerBackdrop;
     private final Runnable updatePowerOutline=this::refreshPowerOutline;
 
     private void refreshPowerOutline(){
@@ -431,7 +444,8 @@ public class HomeKeyService extends AccessibilityService {
                             if(selected.isClickable()&&!"com.android.systemui:id/global_actions_view".equals(selected.getViewIdResourceName())){
                                 android.graphics.Rect bounds=new android.graphics.Rect();selected.getBoundsInScreen(bounds);
                                 if(powerOutline==null)powerOutline=new PowerFocusOutline(this);
-                                powerOutline.show(bounds);found=true;
+                                android.graphics.Rect panel=new android.graphics.Rect();menu.getBoundsInScreen(panel);
+                                powerOutline.show(bounds,panel,powerBackdrop);found=true;
                             }
                         }finally{selected.recycle();}
                     }finally{menu.recycle();}
@@ -442,11 +456,15 @@ public class HomeKeyService extends AccessibilityService {
     }
 
     private void clearPowerFocus(){
+        boolean wasTracking=powerTracking;
         powerTracking=false;handler.removeCallbacks(updatePowerOutline);
         if(powerOutline!=null)powerOutline.close();
+        if(powerBackdrop!=null){powerBackdrop.recycle();powerBackdrop=null;}
         AccessibilityServiceInfo info=getServiceInfo();
         if(info!=null&&(info.eventTypes&AccessibilityEvent.TYPE_VIEW_FOCUSED)!=0){
-            info.eventTypes&=~AccessibilityEvent.TYPE_VIEW_FOCUSED;setServiceInfo(info);
+            info.eventTypes&=~AccessibilityEvent.TYPE_VIEW_FOCUSED;
+            if(wasTracking&&!powerHadKeyFilter)info.flags&=~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+            setServiceInfo(info);
         }
     }
 
