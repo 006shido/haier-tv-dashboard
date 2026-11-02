@@ -1,6 +1,6 @@
-# 3.3.3-corners - 3 November 2026
+# 3.3.3 - 3 November 2026
 
-Android version code: 16. Package: `com.gathin.tvhome`.
+Android version code: 17. Package: `com.gathin.tvhome`.
 
 ## Fix
 
@@ -10,7 +10,7 @@ The backdrop is captured only from the launcher when its power menu is requested
 
 ## Validation
 
-Release unit tests, lintRelease and assembleRelease passed. Installed on Haier Android TV 14 preserving local data. Rounded exterior and both selection positions visually checked, then cancelled with injected Back; no shutdown or restart was activated. The physical remote Back transition needs owner confirmation because injected keys do not reliably exercise accessibility key filtering.
+Release unit tests, lintRelease and assembleRelease passed. The application code matches the previously checked 3.3.3-corners build. This package changes only the displayed version to 3.3.3 and increments the Android version code for an in-place update; assembleRelease passed. The previous package was installed on Haier Android TV 14 preserving local data. The TV was unavailable for installing this metadata-only package. Rounded exterior and both selection positions visually checked, then cancelled with injected Back; no shutdown or restart was activated. The physical remote Back transition needs owner confirmation because injected keys do not reliably exercise accessibility key filtering.
 
 ## Limits
 

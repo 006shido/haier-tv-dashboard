@@ -4,9 +4,15 @@ A personal launcher for Android TV and Google TV, based on [CleanYourTV](https:/
 
 This repository contains the launcher source and retains the upstream [MIT licence](LICENSE). This is an independent fork, not an official Haier or CleanYourTV release.
 
+**Latest version: [3.3.3](https://github.com/006shido/haier-tv-dashboard/releases/tag/v3.3.3)** · Android TV 8.0+ · Tested on Android TV 14
+
+![Home launcher dashboard with favourites, website shortcuts and quick settings](docs/home-screen.png)
+
+*Example of a configured home screen. Apps, links and wallpaper depend on your own setup; the example favourites and website list are not bundled.*
+
 ## Install and open
 
-1. Download the APK from this repository’s [Releases](https://github.com/006shido/haier-tv-dashboard/releases). Read the notes for that version before installing. The repository is currently private, so downloads require repository access.
+1. Download the APK from this repository’s [Releases](https://github.com/006shido/haier-tv-dashboard/releases). Read the notes for that version before installing. If the repository is private, GitHub requires repository access to download.
 2. Copy the APK to the TV using USB or your preferred file-transfer app.
 3. Open it with the TV’s file manager and approve installation from that source if Android asks.
 4. Open **Home** from the TV’s Apps screen.
@@ -85,6 +91,6 @@ Test device: Haier Matrix TV DE, Android TV 14. Other firmware can expose differ
 
 Each release states what was actually checked. Build success does not establish compatibility with every TV, and a power-menu focus test is not a test of an actual shutdown or reboot. The custom APK exceeds upstream’s 576 KiB target. The larger upstream Python/tooling suite was not passing in the Windows workspace and is not included in this launcher-only repository. No general latency or frame-rate improvement is claimed.
 
-Generated builds, APKs, local SDK paths, signing keys, TV backups, screenshots, notifications and personal work notes must stay out of source commits. APK downloads belong in Releases. The APKs do not bundle the owner’s website list, account details, app order or imported wallpaper.
+Generated builds, APKs, local SDK paths, signing keys, TV backups, private screenshots, notifications and personal work notes must stay out of source commits. Only reviewed documentation images belong in `docs/`. APK downloads belong in Releases. The APKs do not bundle the owner’s website list, account details, app order or imported wallpaper.
 
 See [VALIDATION.md](VALIDATION.md) for this release’s exact checks.
