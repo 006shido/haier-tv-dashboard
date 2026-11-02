@@ -39,6 +39,7 @@ Do not use the upstream debloating or build-and-install scripts just to install 
 - **Vertical navigation:** crossing the Websites row keeps the same visible column. The row scrolls horizontally in complete-card steps.
 - **Wallpaper:** choose the scenic background, turn it off, or import an image from TV storage/USB in Launcher settings. A document-picker/file-manager app is needed to select local files.
 - **Top toolbar:** Inputs, Wi-Fi, Bluetooth, Notifications and Settings. Hold the gear for additional home actions.
+- **Power menu:** hold the gear and select **Restart…** to open the TV power options. With the optional helper enabled, a white rounded outline shows the selected option; use Left/Right and OK, or Back to cancel.
 - **Google TV:** use **Switch to Google TV** in launcher settings or the gear’s hold menu. Open the Home app again to return to the custom interface. The tested helper also has **Use this Home screen** to resume redirection.
 
 HDMI, casting, voice search, Ethernet, Bluetooth pairing and installed streaming apps remain managed by the TV. Installation does not disable or remove them.
@@ -53,7 +54,7 @@ The launcher has no Internet permission or telemetry. Website shortcuts open an 
 
 **Direct accessories shortcut:** the tested Haier native Bluetooth panel requires a separately approved `WRITE_SECURE_SETTINGS` grant. This broad permission is optional and is not needed to try Home or choose it as default. Without it, use TV settings. Installation does not grant it automatically.
 
-**Accessibility helper:** optional, device-specific Home redirection and system power-menu integration. Android grants it the broad ability to read screen contents. The implementation reads the active accessibility tree only for up to two seconds after you explicitly open the power menu, and acts only on SystemUI’s `global_actions_view` to give an existing button input focus. It never clicks Power off/Restart for you, stores no screen contents, and does not read other apps for this feature. It is not required on TVs that honour the native default-Home choice. Revoke it in Android’s accessibility settings if you no longer want it.
+**Accessibility helper:** optional, device-specific Home redirection and system power-menu integration. Android grants it the broad ability to read screen contents. After you explicitly open the power menu, the helper attempts to focus its first button for up to two seconds. While that menu remains open, focus/window events trigger reads of SystemUI's `global_actions_view` and the selected button bounds to draw a transparent, rounded white selection outline. The outline follows D-pad selection and is removed when the menu closes. It never clicks Power off/Restart for you, stores no screen contents, and does not read other apps for this feature. It is not required on TVs that honour the native default-Home choice. Revoke it in Android's accessibility settings if you no longer want it.
 
 The Google icon opens account settings. It does not obtain the active Google TV profile photo.
 

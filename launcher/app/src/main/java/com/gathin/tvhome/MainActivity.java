@@ -1344,6 +1344,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        if(hasFocus)HomeKeyService.powerMenuClosed();
         if (hasFocus) {
             startPendingSettingsReorder();
             if (libraryFocusPending && appLibrary == null) focusLibrary();

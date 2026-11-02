@@ -138,6 +138,7 @@ public class HomeKeyService extends AccessibilityService {
 
     @Override
     public void onDestroy() {
+        clearPowerFocus();
         handler.removeCallbacks(powerMenuRequest);
         handler.removeCallbacks(focusPowerOption);
         powerFocusUntil=0;
@@ -306,6 +307,11 @@ public class HomeKeyService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        if(powerTracking&&(event.getEventType()==AccessibilityEvent.TYPE_VIEW_FOCUSED
+                ||event.getEventType()==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)){
+            handler.removeCallbacks(updatePowerOutline);
+            handler.postDelayed(updatePowerOutline,60);
+        }
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
         // app_keys "front:" entries: only activities count, so a toast or the volume bar doesn't change the app in front.
         if ((!frontAppKeys.isEmpty() || !frontAppScancodes.isEmpty())
@@ -398,10 +404,53 @@ public class HomeKeyService extends AccessibilityService {
                     }
                 }
             }finally{if(root!=null)root.recycle();}
-            if(focused)powerFocusUntil=0;
+            if(focused){
+                powerFocusUntil=0;powerTracking=true;
+                AccessibilityServiceInfo info=getServiceInfo();
+                if(info!=null){info.eventTypes|=AccessibilityEvent.TYPE_VIEW_FOCUSED;setServiceInfo(info);}
+                handler.postDelayed(updatePowerOutline,60);
+            }
             else handler.postDelayed(this,100);
         }
     };
+
+    private boolean powerTracking;
+    private PowerFocusOutline powerOutline;
+    private final Runnable updatePowerOutline=this::refreshPowerOutline;
+
+    private void refreshPowerOutline(){
+        if(!powerTracking||running!=this)return;
+        AccessibilityNodeInfo root=getRootInActiveWindow();boolean found=false;
+        try{
+            if(root!=null&&"com.android.systemui".contentEquals(root.getPackageName()==null?"":root.getPackageName())){
+                java.util.List<AccessibilityNodeInfo> menus=root.findAccessibilityNodeInfosByViewId("com.android.systemui:id/global_actions_view");
+                for(AccessibilityNodeInfo menu:menus){
+                    try{
+                        AccessibilityNodeInfo selected=menu.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+                        if(selected!=null)try{
+                            if(selected.isClickable()&&!"com.android.systemui:id/global_actions_view".equals(selected.getViewIdResourceName())){
+                                android.graphics.Rect bounds=new android.graphics.Rect();selected.getBoundsInScreen(bounds);
+                                if(powerOutline==null)powerOutline=new PowerFocusOutline(this);
+                                powerOutline.show(bounds);found=true;
+                            }
+                        }finally{selected.recycle();}
+                    }finally{menu.recycle();}
+                }
+            }
+        }finally{if(root!=null)root.recycle();}
+        if(!found)clearPowerFocus();
+    }
+
+    private void clearPowerFocus(){
+        powerTracking=false;handler.removeCallbacks(updatePowerOutline);
+        if(powerOutline!=null)powerOutline.close();
+        AccessibilityServiceInfo info=getServiceInfo();
+        if(info!=null&&(info.eventTypes&AccessibilityEvent.TYPE_VIEW_FOCUSED)!=0){
+            info.eventTypes&=~AccessibilityEvent.TYPE_VIEW_FOCUSED;setServiceInfo(info);
+        }
+    }
+
+    static void powerMenuClosed(){HomeKeyService service=running;if(service!=null&&service.powerTracking)service.clearPowerFocus();}
 
     /** Input focus only: never performs a click or reads the labels/content of other windows. */
     private static boolean focusPowerChild(AccessibilityNodeInfo node,boolean child){

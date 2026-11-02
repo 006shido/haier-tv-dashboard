@@ -27,8 +27,9 @@ final class DashboardFocus {
         Ring(float density){d=density;}
         @Override public void draw(Canvas c){
             Rect b=getBounds();RectF r=new RectF(b);r.inset(3*d,3*d);p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(5*d);p.setColor(0xff15171c);c.drawRoundRect(r,14*d,14*d,p);
-            p.setStrokeWidth(2.5f*d);p.setColor(0xfffafafa);c.drawRoundRect(r,14*d,14*d,p);
+            float radius=Math.max(0,AppAdapter.cornerRadius(b.width(),d)-3*d);
+            p.setStrokeWidth(5*d);p.setColor(0xff15171c);c.drawRoundRect(r,radius,radius,p);
+            p.setStrokeWidth(2.5f*d);p.setColor(0xfffafafa);c.drawRoundRect(r,radius,radius,p);
         }
         @Override public void setAlpha(int a){p.setAlpha(a);invalidateSelf();}
         @Override public void setColorFilter(ColorFilter f){p.setColorFilter(f);invalidateSelf();}

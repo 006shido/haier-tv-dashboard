@@ -1,29 +1,24 @@
-# 3.3.1-navigation — 3 November 2026
+# 3.3.2-focus — 3 November 2026
 
-Android version code: 14. Package: `com.gathin.tvhome`.
+Android version code: 15. Package: `com.gathin.tvhome`.
 
 ## Changes
 
-- Website entry/exit follows the visible app column in both vertical directions, including when the website row has scrolled sideways.
-- The established outer scrolling layout is retained. Native automatic focus scrolling no longer competes with the dashboard's own focus reveal.
-- The optional accessibility helper focuses the first native system power-menu button after the launcher popup closes. It never activates a power action.
-- The Home app opens a setup screen with Set as default Home and Try Home first. Android owns the default-Home chooser; Launcher settings can reopen it.
-- README rewritten around installation, setup, usage, permissions and limitations. Unneeded upstream device-cleanup installers omitted from this launcher-only copy.
+- A transparent rounded white outline makes the selected native Power off/Restart option visible and follows D-pad focus. It does not intercept input or activate a power action.
+- The outline has no opaque rectangular background and is removed when the dialog closes.
+- App focus rings follow the tile corner radius; launcher popups clip their contents to the rounded outline.
+- README explains power-menu controls and the accessibility feature's exact scope.
+- Includes the previous navigation fixes and app-based default-Home setup.
 
 ## Verified
 
-- JDK 17 release unit tests, lint and assembleRelease completed successfully (lint has zero errors, warnings remain).
-- Installed on Haier Matrix TV DE, Android TV 14, as an update preserving local data.
-- D-pad navigation from a favourite through the Websites row into Apps and back returned to the matching third column.
-- The native Power off button received input focus automatically. D-pad Right moved focus to the native Restart button; Left returned and Back closed the dialog. No power action was activated.
-- The app setup screen opened. Set as default Home displayed Android's chooser with Home listed; the test backed out without changing the existing selection. Try Home first opened the dashboard.
+- Release unit tests, lintRelease and assembleRelease passed with JDK 17. Lint has zero errors; existing warnings remain.
+- Installed version 15 on the Haier Android TV 14 as an update preserving local data.
+- Visually checked the rounded white outline on Power off and Restart after D-pad Right, then closed with Back. The accessibility overlay was absent after closing.
+- No shutdown or restart was activated. No full feature or cross-device regression test is claimed.
 
-## Permission disclosure
+## Accessibility and limits
 
-The optional Home accessibility helper now declares permission to read screen contents. This is broader than a Home-only redirect helper. The owner explicitly approved this change on the test TV. Code reads the active accessibility root for at most two seconds after an explicit power-menu request, targets only SystemUI's global-actions container, and sends only an input-focus action. It does not click a power button or retain screen contents. New users must review Android's accessibility consent before enabling the helper. The normal launcher/default-Home setup does not require enabling it.
+The optional helper uses Android's broad read-screen accessibility capability, already approved on the test TV. Initial power-button focus is bounded to two seconds; while the explicitly opened SystemUI power menu remains open, focus/window events update the selected button outline from its bounds. Closing the menu removes the outline and focus-event subscription. No screen contents are retained and no power button is clicked automatically.
 
-## Limits
-
-This is a device-tested prerelease, not a guarantee for every TV. No actual shutdown/restart or fresh-device reboot/default-Home takeover was tested. Some Haier firmware ignores Android's chosen Home and needs the optional helper. The APK remains above upstream's 576 KiB target. The larger upstream Python suite did not pass in the Windows workspace; it is not part of this launcher-only repository. No general performance improvement is claimed.
-
-Earlier snapshot APKs remain in the previous release. Installing this APK over the repackaged version-code-13 previous build is allowed because this build uses code 14 and the same signing key. Reinstalling a lower-version snapshot may be rejected by Android. The private signing key and user data are not included.
+This is a device-tested prerelease. Firmware can expose different power dialogs; the helper does not restyle the TV's native dialog background. The APK exceeds upstream's 576 KiB target. The upstream Python/tooling suite is not included in this launcher-only repository. Previous release APKs remain available; Android may reject installing an older version over this one. Private signing keys and TV data are not published.
