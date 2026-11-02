@@ -1,0 +1,276 @@
+package com.gathin.tvhome;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.os.Bundle;
+import android.provider.Settings;
+import android.view.View;
+import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.widget.Toast;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/** Remote-friendly settings owned by the launcher; system settings stay one row away. */
+public final class LauncherSettingsActivity extends Activity {
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(LauncherLocale.wrap(base));   // locale
+    }
+
+    static final String EXTRA_REORDER = "com.gathin.tvhome.extra.REORDER_FROM_SETTINGS";
+    private SharedPreferences choices;
+    private final TextView[] columnChoices = new TextView[4];
+    private static final String[] CLOCK_FORMATS = {"system", "12", "24"};
+    private final TextView[] clockChoices = new TextView[CLOCK_FORMATS.length];
+    private TextView wallpaperChoice;
+    private TextView animationsChoice;
+    private TextView followThemeChoice;
+    private TextView openOnStartChoice;
+    private int columns;
+    private String clockFormat;
+    private boolean animations;
+
+    @Override
+    protected void onCreate(Bundle state) {
+        super.onCreate(state);
+        setContentView(R.layout.activity_launcher_settings);
+        TextView switchHome = findViewById(R.id.switchHomeChoice);
+        switchHome.setText(HomeSwitcher.label(this));
+        switchHome.setOnClickListener(v -> {
+            HomeSwitcher.toggle(this);
+            switchHome.setText(HomeSwitcher.label(this));
+        });
+        choices = getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
+        Config config = Config.load(this);
+        View reorderChoice = findViewById(R.id.reorderChoice);
+        reorderChoice.setVisibility(config.launcherSettingsButton ? View.VISIBLE : View.GONE);
+        reorderChoice.setOnClickListener(v -> {
+            setResult(RESULT_OK, new Intent().putExtra(EXTRA_REORDER, true));
+            finish();
+        });
+        columns = config.columns;
+        clockFormat = config.clockFormat;
+        animations = config.animations;
+
+        int[] ids = {R.id.columns4, R.id.columns5, R.id.columns6, R.id.columns7};
+        for (int i = 0; i < ids.length; i++) {
+            final int value = i + 4;
+            columnChoices[i] = findViewById(ids[i]);
+            columnChoices[i].setOnClickListener(v -> {
+                if (columns == value) return;
+                columns = value;
+                choices.edit().putInt("columns", value).apply();
+                changed();
+                refresh();
+            });
+        }
+        int[] clockIds = {R.id.clockSystem, R.id.clock12, R.id.clock24};
+        for (int i = 0; i < clockIds.length; i++) {
+            final String value = CLOCK_FORMATS[i];
+            clockChoices[i] = findViewById(clockIds[i]);
+            clockChoices[i].setOnClickListener(v -> {
+                if (value.equals(clockFormat)) return;
+                clockFormat = value;
+                choices.edit().putString(Config.CLOCK_FORMAT_KEY, value).apply();
+                changed();
+                refresh();
+            });
+        }
+        // Mirror text alignment without globally opting the launcher into RTL. Numeric rows
+        // still need explicit ordering in Android's no-supportsRtl compatibility mode.
+        if (getResources().getBoolean(R.bool.rtl_menu_bar))
+            findViewById(android.R.id.content).setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        if (getResources().getBoolean(R.bool.rtl_app_grid)) {
+            reverseRow(columnChoices);
+            reverseRow(clockChoices);
+        }
+        wallpaperChoice = findViewById(R.id.wallpaperChoice);
+        wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
+        animationsChoice = findViewById(R.id.animationsChoice);
+        animationsChoice.setOnClickListener(v -> {
+            animations = !animations;
+            choices.edit().putBoolean("animations", animations).apply();
+            changed();
+            refresh();
+        });
+        openOnStartChoice = findViewById(R.id.openOnStartChoice);
+        if (config.openOnStartChoice) {
+            openOnStartChoice.setVisibility(View.VISIBLE);
+            openOnStartChoice.setOnClickListener(v -> showOpenOnStartPicker());
+        }
+        followThemeChoice = findViewById(R.id.followThemeChoice);
+        followThemeChoice.setOnClickListener(v -> {
+            if (!hasOnTvChoices()) return;
+            choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
+                    .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
+                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(OpenOnStart.KEY).commit();
+            Config current = Config.load(this);
+            columns = current.columns;
+            clockFormat = current.clockFormat;
+            animations = current.animations;
+            changed();
+            refresh();
+        });
+        findViewById(R.id.tvSettingsChoice).setOnClickListener(v ->
+                open(SystemSettings.intent(this, Settings.ACTION_SETTINGS)));
+        refresh();
+        if (config.launcherSettingsButton) reorderChoice.requestFocus();
+        else columnChoices[Math.max(0, Math.min(columns - 4, 3))].requestFocus();
+    }
+
+    private void reverseRow(TextView[] views) {
+        LinearLayout row = (LinearLayout) views[0].getParent();
+        row.removeAllViews();
+        for (int i = views.length - 1; i >= 0; i--) row.addView(views[i]);
+    }
+
+    private static final int PICK_WALLPAPER=71;
+    private void showWallpaperPicker() {
+        List<String> labels=new ArrayList<>();
+        labels.add(getString(R.string.choose_wallpaper_picture));
+        labels.add(getString(R.string.scenic_landscape));
+        labels.add(getString(R.string.wallpaper_none));
+        if(WallpaperImage.file(this).isFile())labels.add(getString(R.string.saved_wallpaper_picture));
+        new AlertDialog.Builder(this).setTitle(R.string.wallpaper_label)
+            .setItems(labels.toArray(new String[0]),(dialog,which)->{
+                if(which==0){
+                    Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("image/*");
+                    try{startActivityForResult(pick,PICK_WALLPAPER);}
+                    catch(ActivityNotFoundException unavailable){
+                        try{startActivityForResult(new Intent(Intent.ACTION_GET_CONTENT).setType("image/*"),PICK_WALLPAPER);}
+                        catch(ActivityNotFoundException missing){Toast.makeText(this,R.string.not_available,Toast.LENGTH_LONG).show();}
+                    }
+                    return;
+                }
+                if(which==1)choices.edit().remove(Config.WALLPAPER_CHOICE_KEY).apply();
+                else choices.edit().putString(Config.WALLPAPER_CHOICE_KEY,which==2?"none":"custom").apply();
+                changed();refresh();
+            }).setNegativeButton(android.R.string.cancel,null).show();
+    }
+    @Override protected void onActivityResult(int request,int result,Intent data){
+        super.onActivityResult(request,result,data);
+        if(request!=PICK_WALLPAPER||result!=RESULT_OK||data==null||data.getData()==null)return;
+        android.net.Uri uri=data.getData();
+        Toast.makeText(this,R.string.saving_wallpaper,Toast.LENGTH_SHORT).show();
+        new Thread(()->{
+            try{
+                WallpaperImage.save(getApplicationContext(),uri);
+                runOnUiThread(()->{
+                    choices.edit().putString(Config.WALLPAPER_CHOICE_KEY,"custom").apply();changed();
+                    if(!isDestroyed()){refresh();Toast.makeText(this,R.string.wallpaper_applied,Toast.LENGTH_SHORT).show();}
+                });
+            }catch(java.io.IOException|SecurityException failure){
+                runOnUiThread(()->{if(!isDestroyed())Toast.makeText(this,R.string.wallpaper_import_failed,Toast.LENGTH_LONG).show();});
+            }
+        },"WallpaperImport").start();
+    }
+
+    /** Off, then every app with a TV entry point by name. Saved at once; it is read on the next boot. */
+    private void showOpenOnStartPicker() {
+        PackageManager pm = getPackageManager();
+        List<String[]> apps = new ArrayList<>();
+        Intent tv = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+        for (ResolveInfo r : pm.queryIntentActivities(tv, 0)) {
+            String pkg = r.activityInfo.packageName;
+            if (pkg.equals(getPackageName())) continue;
+            boolean seen = false;
+            for (String[] a : apps) seen |= a[1].equals(pkg);
+            if (!seen) apps.add(new String[]{r.loadLabel(pm).toString(), pkg});
+        }
+        Collections.sort(apps, (a, b) -> a[0].compareToIgnoreCase(b[0]));
+        String[] labels = new String[apps.size() + 1];
+        labels[0] = getString(R.string.off);
+        String current = choices.getString(OpenOnStart.KEY, "");
+        int checked = 0;
+        for (int i = 0; i < apps.size(); i++) {
+            labels[i + 1] = apps.get(i)[0];
+            if (apps.get(i)[1].equals(current)) checked = i + 1;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.open_on_start_label)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    dialog.dismiss();
+                    if (which == 0) choices.edit().remove(OpenOnStart.KEY).apply();
+                    else {
+                        OpenOnStart.skipThisBoot(this);
+                        choices.edit().putString(OpenOnStart.KEY, apps.get(which - 1)[1]).apply();
+                    }
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** The picked app's name, its package when it is gone, or Off. */
+    private String openOnStartLabel() {
+        String pkg = choices.getString(OpenOnStart.KEY, "");
+        if (pkg.isEmpty()) return getString(R.string.off);
+        try {
+            PackageManager pm = getPackageManager();
+            return pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+        } catch (PackageManager.NameNotFoundException e) {
+            return pkg;
+        }
+    }
+
+    private static int indexOf(List<File> images, String name) {
+        if (name == null) return -1;
+        for (int i = 0; i < images.size(); i++) {
+            if (images.get(i).getName().equals(name)) return i;
+        }
+        return -1;
+    }
+
+    /**
+     * A choice was saved. Home rebuilds when it next resumes because the change count moved, whether these
+     * settings are left with Back or with the remote's Home button (which cancels the activity result).
+     */
+    private void changed() {
+        setResult(RESULT_OK);
+        choices.edit().putLong(Config.SETTINGS_REVISION_KEY,
+                choices.getLong(Config.SETTINGS_REVISION_KEY, 0) + 1).apply();
+    }
+
+    private void refresh() {
+        for (int i = 0; i < columnChoices.length; i++) {
+            columnChoices[i].setSelected(columns == i + 4);
+        }
+        for (int i = 0; i < clockChoices.length; i++) {
+            clockChoices[i].setSelected(CLOCK_FORMATS[i].equals(clockFormat));
+        }
+        animationsChoice.setText(getString(R.string.animations_state,
+                getString(animations ? R.string.on : R.string.off)));
+        String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
+        wallpaperChoice.setText(getString(R.string.wallpaper_state,
+                "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)
+                        : "custom".equals(wallpaperCurrent) ? getString(R.string.saved_wallpaper_picture)
+                        : wallpaperCurrent != null ? wallpaperCurrent
+                        : getString(R.string.scenic_landscape)));
+        openOnStartChoice.setText(getString(R.string.open_on_start_state, openOnStartLabel()));
+        followThemeChoice.setSelected(!hasOnTvChoices());
+    }
+
+    private boolean hasOnTvChoices() {
+        return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
+                || choices.contains("animations") || choices.contains("advanced_effects")
+                || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
+                || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(OpenOnStart.KEY);
+    }
+
+    private void open(Intent intent) {
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            Toast.makeText(this, R.string.not_available, Toast.LENGTH_LONG).show();
+        }
+    }
+}

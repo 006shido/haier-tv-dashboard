@@ -1,0 +1,11 @@
+launcher/.gradle/
+launcher/build/
+launcher/app/build/
+launcher/local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+*.pem
+*.log
+.DS_Store
